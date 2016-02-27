@@ -2,6 +2,7 @@ import math
 import json
 import os
 import urllib.request
+import random
 from moviepy.editor import *
 from random import choice, uniform
 
@@ -21,6 +22,7 @@ JUSTICE_MAPPING = {
 
 MAX_MISC_TIME = 4
 MAX_RELATED_TIME = 7
+MIN_CLIP_DURATION = 2
 
 
 def random_clip(video, duration):
@@ -45,7 +47,10 @@ def generate_video_for_speaker(speaker, duration, resources):
             duration -= c.duration
             m = choice(misc_resources)
             if m.duration > duration:
-                if duration > MAX_MISC_TIME:
+
+                # There must be a little time after the cut but before the end
+                # of this turn.
+                if duration > MAX_MISC_TIME + MIN_CLIP_DURATION:
                     clips.append(random_clip(m, MAX_MISC_TIME))
                     duration -= MAX_MISC_TIME
                 else:
@@ -77,7 +82,71 @@ def generate_resource_mapping(base):
     return resources
 
 
+def is_short(turn):
+    duration = turn_duration(turn)
+    if duration < 2:
+        return True
+    return False
+
+
+def turn_duration(turn):
+    start_time = float(turn["start"])
+    end_time = float(turn["stop"])
+    return end_time - start_time
+
+def build_video(resources, transcript, audio):
+    sections = transcript["sections"]
+
+    unknown_mapping = {}
+    speaker_videos = []
+    for section in sections:
+        turns = section["turns"]
+        turn_num = 0
+        while turn_num < len(turns):
+            turn = turns[turn_num]
+            name = turn["speaker"]["name"]
+
+            if name not in JUSTICE_MAPPING:
+                assert(turn["speaker"]["roles"] is None)
+                if name not in unknown_mapping.keys():
+                    resource = "lawyer" + str(len(unknown_mapping.keys())+1)
+                    unknown_mapping[name] = resource
+                else:
+                    resource = unknown_mapping[name]
+            else:
+                resource = JUSTICE_MAPPING[name]
+
+            print(name)
+
+            duration = turn_duration(turn)
+            if duration < 0.001:
+                turn_num += 1
+                continue
+
+            # Detect the pattern where a speaker is briefly interrupted
+            if turn_num + 2 < len(turns):
+                next_turn = turns[turn_num + 1]
+                next_next_turn = turns[turn_num + 2]
+                if is_short(next_turn) and next_next_turn["speaker"]["name"] == name:
+                    duration += turn_duration(next_turn)
+                    duration += turn_duration(next_next_turn)
+                    turn_num += 2
+
+            vid = generate_video_for_speaker(resource, duration,
+                                             resources)
+            speaker_videos.append(vid)
+            for block in turn["text_blocks"]:
+                print("  {}".format(block["text"]))
+            turn_num += 1
+
+    out = concatenate_videoclips(speaker_videos)
+    out.audio = audio.audio
+    return out
+
+
 def main():
+    # For reproducible random choices
+    random.seed(1)
     resources = generate_resource_mapping("resources")
 
     url = "https://api.oyez.org/case_media/oral_argument_audio/24097"
@@ -99,44 +168,10 @@ def main():
     audio_path = urllib.request.urlretrieve(url)[0]
     audio = VideoFileClip(audio_path)
 
-    sections = transcript["sections"]
+    video = build_video(resources, transcript, audio)
 
-    unknown_mapping = {}
-    speaker_videos = []
-    for i, section in enumerate(sections):
-        print("  SECTION: {}".format(i))
-        for turn in section["turns"]:
-            name = turn["speaker"]["name"]
-
-            if name not in JUSTICE_MAPPING:
-                assert(turn["speaker"]["roles"] is None)
-                if name not in unknown_mapping.keys():
-                    resource = "lawyer" + str(len(unknown_mapping.keys())+1)
-                    unknown_mapping[name] = resource
-                else:
-                    resource = unknown_mapping[name]
-            else:
-                resource = JUSTICE_MAPPING[name]
-
-            print(name)
-
-            start_time = float(turn["start"])
-            end_time = float(turn["stop"])
-
-            if math.isclose(start_time, end_time):
-                continue
-
-            print(start_time, end_time)
-            assert(end_time > start_time)
-            vid = generate_video_for_speaker(resource, end_time - start_time,
-                                             resources)
-            speaker_videos.append(vid)
-            for block in turn["text_blocks"]:
-                print("  {}".format(block["text"]))
-
-    out = concatenate_videoclips(speaker_videos)
-    out.audio = audio.audio
-    out.write_videofile("test.mp4")
+    print(video.duration, audio.duration)
+    video.write_videofile("test.mp4")
 
 if __name__ == "__main__":
     main()
