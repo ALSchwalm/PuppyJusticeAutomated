@@ -10,10 +10,6 @@ def download_json(url):
     text = data.decode('utf-8')
     return json.loads(text)
 
-#js = download_json("https://api.oyez.org/case_media/oral_argument_audio/24097")
-# resources = generate_resource_mapping("resources")
-# video = build_video(resources, transcript, audio)
-# video.write_videofile("{}.mp4".format(title))
 
 def download_audio(media_json):
     url = media_json["media_file"][0]["href"]

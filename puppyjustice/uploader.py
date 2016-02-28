@@ -46,7 +46,7 @@ CLIENT_SECRETS_FILE = "key.json"
 
 # This OAuth 2.0 access scope allows an application to upload files to the
 # authenticated user's YouTube channel, but doesn't allow other types of access.
-YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
+YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.force-ssl"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
@@ -91,7 +91,7 @@ def initialize_upload(youtube, options):
     if options.keywords:
         tags = options.keywords.split(",")
 
-    body=  dict(
+    body = dict(
         snippet=dict(
             title=options.title,
             description=options.description,
@@ -121,7 +121,23 @@ def initialize_upload(youtube, options):
         media_body=MediaFileUpload(options.file, chunksize=-1, resumable=True)
     )
 
-    resumable_upload(insert_request)
+    response = resumable_upload(insert_request)
+    id = response["id"]
+
+    body = dict(
+        snippet=dict(
+            videoId=id,
+            language="en",
+            name="en_caption",
+            isDraft=False
+        )
+    )
+
+    youtube.captions().insert(
+        part=",".join(list(body.keys())),
+        body=body,
+        media_body=options.caption
+    ).execute()
 
 
 # This method implements an exponential backoff strategy to resume a
@@ -157,27 +173,33 @@ def resumable_upload(insert_request):
             sleep_seconds = random.random() * max_sleep
             print(("Sleeping %f seconds and then retrying..." % sleep_seconds))
             time.sleep(sleep_seconds)
+    return response
+
+# Module scope so we only run this once
+argparser.add_argument("--file", required=True, help="Video file to upload")
+argparser.add_argument("--caption", help="Captions for video")
+argparser.add_argument("--title", help="Video title", default="Test Title")
+argparser.add_argument("--description", help="Video description",
+                       default="Test Description")
+argparser.add_argument("--category", default="24",
+                       help="Numeric video category. " +
+                       "See https://developers.google.com/youtube/v3/docs/videoCategories/list")
+argparser.add_argument("--keywords", help="Video keywords, comma separated",
+                       default="")
+argparser.add_argument("--privacyStatus", choices=VALID_PRIVACY_STATUSES,
+                       default=VALID_PRIVACY_STATUSES[0], help="Video privacy status.")
 
 
-def upload_video(title, filename, keywords, description, public=False):
+def upload_video(title, video_path, caption_path, keywords,
+                 description, public=False):
     if public:
         priv_status = "public"
     else:
         priv_status = "private"
 
-    argparser.add_argument("--file", required=True, help="Video file to upload")
-    argparser.add_argument("--title", help="Video title", default="Test Title")
-    argparser.add_argument("--description", help="Video description",
-                           default="Test Description")
-    argparser.add_argument("--category", default="24",
-                           help="Numeric video category. " +
-                           "See https://developers.google.com/youtube/v3/docs/videoCategories/list")
-    argparser.add_argument("--keywords", help="Video keywords, comma separated",
-                           default="")
-    argparser.add_argument("--privacyStatus", choices=VALID_PRIVACY_STATUSES,
-                           default=VALID_PRIVACY_STATUSES[0], help="Video privacy status.")
     args = argparser.parse_args([
-        "--file", filename,
+        "--file", video_path,
+        "--caption", caption_path,
         "--title", title,
         "--description", description,
         "--keywords", ",".join(keywords),
