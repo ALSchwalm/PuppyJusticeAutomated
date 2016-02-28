@@ -105,6 +105,5 @@ if __name__ == "__main__":
             description += "Conclusion:\n"
             description += sanitize_text(case["conclusion"])
 
-        print(description)
         build_video_and_upload_case(title, description, media_json, resources)
         handled_cases.write(str(case["ID"]) + "\n")
