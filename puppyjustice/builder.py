@@ -221,11 +221,8 @@ def build_video(resources, transcript, audio):
             speaker_videos.append(vid)
             turn_num += 1
 
-    out = concatenate_videoclips(speaker_videos)
-
-    if out.duration < audio.duration:
-        ending = VideoFileClip("resources/ending.mp4")
-        out = concatenate_videoclips([out, ending])
+    ending = VideoFileClip("resources/disclaimer.mp4")
+    out = concatenate_videoclips(speaker_videos + [ending.crossfadein(1)])
     out.audio = audio.audio
     return out
 
