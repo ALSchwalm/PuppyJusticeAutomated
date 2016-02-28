@@ -24,6 +24,64 @@ MAX_MISC_TIME = 4
 MAX_RELATED_TIME = 7
 MIN_CLIP_DURATION = 1.8
 RECENT_SPEAKER_THRESHOLD = 6
+MAX_CHARACTERS_PER_SUBTITLE = 85
+
+
+def milli_to_timecode(ms):
+    milli = int(ms % 1000)
+    seconds = int((ms / 1000) % 60)
+    minutes = int((ms / (1000*60)) % 60)
+    hours = int((ms / (1000*60*60)) % 24)
+    return "{0:02d}:{1:02d}:{2:02d}.{3:03d}".format(
+        hours, minutes, seconds, milli)
+
+
+def write_timecode(start_ms, end_ms, file):
+    start = milli_to_timecode(start_ms)
+    end = milli_to_timecode(end_ms)
+    file.write("{},{}\n".format(start, end))
+
+
+def block_parts(text, start, end):
+    duration = end - start
+    words = text.split()
+    sub_text = ""
+
+    prior_time = start
+    for word in words:
+        sub_text += " " + word
+        if len(sub_text) + len(word) >= MAX_CHARACTERS_PER_SUBTITLE:
+            sub_end = prior_time + duration*len(sub_text)/len(text)
+            yield sub_text.strip(), prior_time, sub_end
+            prior_time = sub_end
+            sub_text = ""
+    yield sub_text.strip(), prior_time, end
+
+
+def write_subtitle_file(transcript, destination):
+    sections = transcript["sections"]
+    with open(destination, "w") as file:
+        for section in sections:
+            for turn in section["turns"]:
+                for block_num, block in enumerate(turn["text_blocks"]):
+                    start_time = float(block["start"]) * 1000
+                    end_time = float(block["stop"]) * 1000
+                    block_text = block["text"]
+
+                    if block_num == 0:
+                        sub_name = turn["speaker"]["last_name"].split()[-1]
+                        block_text = sub_name + ": " + block_text
+
+                    for sub, sub_start, sub_end in block_parts(block_text,
+                                                               start_time,
+                                                               end_time):
+                        if sub == "":
+                            continue
+                        write_timecode(sub_start,
+                                       sub_end,
+                                       file)
+                        file.write(sub + "\n")
+                        file.write("\n")
 
 
 def random_clip(video, duration):
@@ -175,7 +233,6 @@ def build_video(resources, transcript, audio):
 def main():
     # For reproducible random choices
     random.seed(1)
-    resources = generate_resource_mapping("resources")
 
     url = "https://api.oyez.org/case_media/oral_argument_audio/24097"
     response = urllib.request.urlopen(url)
@@ -188,6 +245,8 @@ def main():
     transcript = js["transcript"]
     title = transcript["title"]
 
+    write_subtitle_file(transcript, "test.SUB")
+
     print("  {}: \n  {}".format(title, subtitle))
 
     url = js["media_file"][0]["href"]
@@ -195,6 +254,8 @@ def main():
 
     audio_path = urllib.request.urlretrieve(url)[0]
     audio = VideoFileClip(audio_path)
+
+    resources = generate_resource_mapping("resources")
 
     video = build_video(resources, transcript, audio)
 
