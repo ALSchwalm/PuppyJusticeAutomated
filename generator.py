@@ -165,7 +165,7 @@ def main():
     random.seed(1)
     resources = generate_resource_mapping("resources")
 
-    url = "https://api.oyez.org/case_media/oral_argument_audio/24096"
+    url = "https://api.oyez.org/case_media/oral_argument_audio/24097"
     response = urllib.request.urlopen(url)
     data = response.read()
     text = data.decode('utf-8')
