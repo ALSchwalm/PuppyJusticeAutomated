@@ -3,4 +3,4 @@ unused/
 resources_from_raw_footage.py
 
 key.json
--oauth2.json
+*-oauth2.json

@@ -8,7 +8,7 @@ import logging
 import random
 from docopt import docopt
 
-from puppyjustice import downloader, builder
+from puppyjustice import downloader, builder, uploader
 
 if __name__ == "__main__":
     arguments = docopt(__doc__, version='scotus-dogs-automated v0.1')
@@ -29,5 +29,11 @@ if __name__ == "__main__":
     subtitle_location = builder.build_subtitles(transcript)
     resources = builder.generate_resource_mapping("resources")
 
+    title = transcript["title"]
+
     video = builder.build_video(resources, transcript, audio)
-    video.write_videofile("{}.mp4".format(transcript["title"]))
+    video.write_videofile("{}.mp4".format(title))
+
+    uploader.upload_video(title, "{}.mp4".format(title),
+                          ["puppyjustice", "scotus"],
+                          "temp description")
