@@ -23,6 +23,7 @@ JUSTICE_MAPPING = {
 MAX_MISC_TIME = 4
 MAX_RELATED_TIME = 7
 MIN_CLIP_DURATION = 1.8
+RECENT_SPEAKER_THRESHOLD = 6
 
 
 def random_clip(video, duration):
@@ -31,13 +32,14 @@ def random_clip(video, duration):
     return video.subclip(start, start+duration)
 
 
-def generate_video_for_speaker(speaker, duration, resources):
-    needed_duration = duration
+def generate_video_for_speaker(speaker, duration, resources, no_skip=False):
     speaker_resources = resources[speaker]
     misc_resources = resources["misc"]
 
     clips = []
-    while duration > MIN_CLIP_DURATION:
+    while duration > MIN_CLIP_DURATION or no_skip:
+        no_skip = False
+
         c = choice(speaker_resources)
         if c.duration > duration:
             clips.append(random_clip(c, duration))
@@ -65,9 +67,9 @@ def generate_video_for_speaker(speaker, duration, resources):
                     duration -= m.duration
     if len(clips) > 0:
         out = concatenate_videoclips(clips)
-        return out
+        return out, duration
     else:
-        return None
+        return None, None
 
 
 def generate_resource_mapping(base):
@@ -84,9 +86,16 @@ def generate_resource_mapping(base):
     return resources
 
 
+def has_spoken_recently(prior_turns, speaker):
+    # TODO this does not account for speakers who were skipped
+    recent_turns = prior_turns[-RECENT_SPEAKER_THRESHOLD:]
+    recent_speakers = [turn_speaker(t) for t in recent_turns]
+    return speaker in recent_speakers
+
+
 def is_short(turn):
     duration = turn_duration(turn)
-    if duration < 2:
+    if duration < MIN_CLIP_DURATION:
         return True
     return False
 
@@ -97,10 +106,18 @@ def turn_duration(turn):
     return end_time - start_time
 
 
+def same_speaker(turn, speaker):
+    return turn_speaker(turn) == speaker
+
+
+def turn_speaker(turn):
+    return turn["speaker"]["name"]
+
+
 def build_video(resources, transcript, audio):
     sections = transcript["sections"]
 
-    underflow_duration = 0
+    current_remainder = 0
     unknown_mapping = {}
     speaker_videos = []
     for section in sections:
@@ -108,7 +125,7 @@ def build_video(resources, transcript, audio):
         turn_num = 0
         while turn_num < len(turns):
             turn = turns[turn_num]
-            name = turn["speaker"]["name"]
+            name = turn_speaker(turn)
 
             if name not in JUSTICE_MAPPING:
                 assert(turn["speaker"]["roles"] is None)
@@ -121,38 +138,33 @@ def build_video(resources, transcript, audio):
             else:
                 resource = JUSTICE_MAPPING[name]
 
-            print(name)
-
             duration = turn_duration(turn)
+
+            # Just skip very short turns
             if duration < 0.001:
                 turn_num += 1
                 continue
 
-            # Detect the pattern where a speaker is briefly interrupted
-            if turn_num + 2 < len(turns):
-                next_turn = turns[turn_num + 1]
-                next_next_turn = turns[turn_num + 2]
-                if is_short(next_turn) and next_next_turn["speaker"]["name"] == name:
-                    duration += turn_duration(next_turn)
-                    duration += turn_duration(next_next_turn)
-                    turn_num += 2
+            if len(turns) > turn_num+2 and \
+                    is_short(turns[turn_num+1]) and \
+                    has_spoken_recently(turns[:turn_num+1],
+                                        turn_speaker(turns[turn_num+1])) and \
+                    same_speaker(turns[turn_num+2], name):
+                duration += turn_duration(turns[turn_num+1])
+                duration += turn_duration(turns[turn_num+2])
+                turn_num += 2
 
-            vid = generate_video_for_speaker(resource,
-                                             duration + underflow_duration,
-                                             resources)
+            vid, remainder = generate_video_for_speaker(resource,
+                                                        duration + current_remainder,
+                                                        resources, no_skip=True)
             if vid is None:
-                underflow_duration += duration
+                current_remainder = duration
                 turn_num += 1
                 continue
+            else:
+                current_remainder = remainder
 
             speaker_videos.append(vid)
-            if not math.isclose(duration + underflow_duration, vid.duration):
-                underflow_duration += duration - vid.duration
-            else:
-                underflow_duration = 0
-
-            for block in turn["text_blocks"]:
-                print("  {}".format(block["text"]))
             turn_num += 1
 
     out = concatenate_videoclips(speaker_videos)
