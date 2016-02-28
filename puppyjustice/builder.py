@@ -1,8 +1,4 @@
-import math
-import json
 import os
-import urllib.request
-import random
 from moviepy.editor import *
 from random import choice, uniform
 
@@ -226,41 +222,15 @@ def build_video(resources, transcript, audio):
             turn_num += 1
 
     out = concatenate_videoclips(speaker_videos)
+
+    if out.duration < audio.duration:
+        ending = VideoFileClip("resources/ending.mp4")
+        out = concatenate_videoclips([out, ending])
     out.audio = audio.audio
     return out
 
 
-def main():
-    # For reproducible random choices
-    random.seed(1)
-
-    url = "https://api.oyez.org/case_media/oral_argument_audio/24097"
-    response = urllib.request.urlopen(url)
-    data = response.read()
-    text = data.decode('utf-8')
-    js = json.loads(text)
-
-    subtitle = js["title"]
-
-    transcript = js["transcript"]
+def build_subtitles(transcript):
     title = transcript["title"]
-
-    write_subtitle_file(transcript, "test.SUB")
-
-    print("  {}: \n  {}".format(title, subtitle))
-
-    url = js["media_file"][0]["href"]
-    print("Downloading audio from: {}".format(url))
-
-    audio_path = urllib.request.urlretrieve(url)[0]
-    audio = VideoFileClip(audio_path)
-
-    resources = generate_resource_mapping("resources")
-
-    video = build_video(resources, transcript, audio)
-
-    print(video.duration, audio.duration)
-    video.write_videofile("test.mp4")
-
-if __name__ == "__main__":
-    main()
+    write_subtitle_file(transcript, "{}.SUB".format(title))
+    return "{}.SUB".format(title)
