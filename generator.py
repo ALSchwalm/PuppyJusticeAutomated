@@ -22,7 +22,7 @@ JUSTICE_MAPPING = {
 
 MAX_MISC_TIME = 4
 MAX_RELATED_TIME = 7
-MIN_CLIP_DURATION = 2
+MIN_CLIP_DURATION = 1.8
 
 
 def random_clip(video, duration):
@@ -37,7 +37,7 @@ def generate_video_for_speaker(speaker, duration, resources):
     misc_resources = resources["misc"]
 
     clips = []
-    while duration > 0:
+    while duration > MIN_CLIP_DURATION:
         c = choice(speaker_resources)
         if c.duration > duration:
             clips.append(random_clip(c, duration))
@@ -63,9 +63,11 @@ def generate_video_for_speaker(speaker, duration, resources):
                 else:
                     clips.append(m)
                     duration -= m.duration
-    out = concatenate_videoclips(clips)
-    assert(math.isclose(out.duration, needed_duration))
-    return out
+    if len(clips) > 0:
+        out = concatenate_videoclips(clips)
+        return out
+    else:
+        return None
 
 
 def generate_resource_mapping(base):
@@ -94,9 +96,11 @@ def turn_duration(turn):
     end_time = float(turn["stop"])
     return end_time - start_time
 
+
 def build_video(resources, transcript, audio):
     sections = transcript["sections"]
 
+    underflow_duration = 0
     unknown_mapping = {}
     speaker_videos = []
     for section in sections:
@@ -109,7 +113,8 @@ def build_video(resources, transcript, audio):
             if name not in JUSTICE_MAPPING:
                 assert(turn["speaker"]["roles"] is None)
                 if name not in unknown_mapping.keys():
-                    resource = "lawyer" + str(len(unknown_mapping.keys())+1)
+                    n = len(unknown_mapping.keys()) % 2
+                    resource = "lawyer" + str(n)
                     unknown_mapping[name] = resource
                 else:
                     resource = unknown_mapping[name]
@@ -132,9 +137,20 @@ def build_video(resources, transcript, audio):
                     duration += turn_duration(next_next_turn)
                     turn_num += 2
 
-            vid = generate_video_for_speaker(resource, duration,
+            vid = generate_video_for_speaker(resource,
+                                             duration + underflow_duration,
                                              resources)
+            if vid is None:
+                underflow_duration += duration
+                turn_num += 1
+                continue
+
             speaker_videos.append(vid)
+            if not math.isclose(duration + underflow_duration, vid.duration):
+                underflow_duration += duration - vid.duration
+            else:
+                underflow_duration = 0
+
             for block in turn["text_blocks"]:
                 print("  {}".format(block["text"]))
             turn_num += 1
@@ -149,7 +165,7 @@ def main():
     random.seed(1)
     resources = generate_resource_mapping("resources")
 
-    url = "https://api.oyez.org/case_media/oral_argument_audio/24097"
+    url = "https://api.oyez.org/case_media/oral_argument_audio/24096"
     response = urllib.request.urlopen(url)
     data = response.read()
     text = data.decode('utf-8')
