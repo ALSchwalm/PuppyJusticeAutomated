@@ -57,11 +57,14 @@ def cases_during_year(year, excluding):
 
 
 def can_handle_case(case):
-    members = case["heard_by"][0]["members"]
-    for member in members:
-        if member["name"] not in builder.JUSTICE_MAPPING.keys():
-            return False
-    return True
+    try:
+        members = case["heard_by"][0]["members"]
+        for member in members:
+            if member["name"] not in builder.JUSTICE_MAPPING.keys():
+                return False
+        return True
+    except:
+        return False
 
 
 def sanitize_text(text):
