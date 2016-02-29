@@ -30,7 +30,8 @@ def build_video_and_upload_case(title, description, media_json, resources):
     uploader.upload_video(title,
                           "{}.mp4".format(title),
                           subtitle_location,
-                          ["puppyjustice", "scotus"],
+                          ["puppyjustice", "scotus", "yt:cc=on",
+                           "RealAnimalsFakePaws"],
                           description)
     logging.info("  Uploading complete")
 
@@ -104,6 +105,16 @@ if __name__ == "__main__":
         if case["conclusion"]:
             description += "Conclusion:\n"
             description += sanitize_text(case["conclusion"])
+
+        description += "\n\nPuppyJusticeAutomated is available on github here: {}\n\n".format(
+            "https://github.com/ALSchwalm/scotus-dogs-automated")
+
+        description += (
+            "The audio and transcript used in this video is provided "
+            "by the Chicago-Kent College of Law under the terms of the "
+            "Creative Commons Attribution-NonCommercial 4.0 International License. "
+            "See this link for details: https://creativecommons.org/licenses/by-nc/4.0/"
+        )
 
         build_video_and_upload_case(title, description, media_json, resources)
         handled_cases.write(str(case["ID"]) + "\n")
