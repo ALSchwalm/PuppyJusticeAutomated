@@ -136,6 +136,12 @@ if __name__ == "__main__":
         description += "\nFor more information about this case see: {}\n\n".format(
             oyez_link)
 
+        for i, section in enumerate(media_json["transcript"]["sections"]):
+            start_time = float(section["start"]) * 1000
+            time = builder.milli_to_timecode(start_time, short=True)
+
+            description += "Section {}: {}\n".format(i, time)
+
         description += "\n\nPuppyJusticeAutomated is available on github here: {}\n\n".format(
             "https://github.com/ALSchwalm/scotus-dogs-automated")
 

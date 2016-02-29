@@ -23,13 +23,18 @@ RECENT_SPEAKER_THRESHOLD = 6
 MAX_CHARACTERS_PER_SUBTITLE = 85
 
 
-def milli_to_timecode(ms):
+def milli_to_timecode(ms, short=False):
     milli = int(ms % 1000)
     seconds = int((ms / 1000) % 60)
     minutes = int((ms / (1000*60)) % 60)
     hours = int((ms / (1000*60*60)) % 24)
-    return "{0:02d}:{1:02d}:{2:02d}.{3:03d}".format(
-        hours, minutes, seconds, milli)
+
+    if short is False:
+        return "{0:02d}:{1:02d}:{2:02d}.{3:03d}".format(
+            hours, minutes, seconds, milli)
+    else:
+        return "{0:02d}:{1:02d}:{2:02d}".format(
+            hours, minutes, seconds)
 
 
 def write_timecode(start_ms, end_ms, file):
