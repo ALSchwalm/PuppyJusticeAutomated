@@ -53,7 +53,10 @@ def cases_during_year(year, excluding):
         case_json = downloader.download_json(short_case["href"])
         media_json = downloader.download_json(
             case_json["oral_argument_audio"][0]["href"])
-        yield case_json, short_case["name"], media_json
+        oyez_link = short_case["href"].replace("api.oyez.org", "www.oyez.org")
+        title = "{}: {}".format(short_case["name"],
+                                case_json["oral_argument_audio"][0]["title"])
+        yield case_json, title, media_json, oyez_link
 
 
 def can_handle_case(case):
@@ -94,7 +97,7 @@ if __name__ == "__main__":
 
     resources = builder.generate_resource_mapping("resources")
 
-    for case, title, media_json in cases_during_year(
+    for case, title, media_json, oyez_link in cases_during_year(
             2010, excluding=handled_cases):
         if not can_handle_case(case):
             logging.info("Skipping case {}".format(case["ID"]))
@@ -110,6 +113,9 @@ if __name__ == "__main__":
             description += "Conclusion:\n"
             description += sanitize_text(case["conclusion"])
 
+        description += "\nFor more information about this case see: {}\n\n".format(
+            oyez_link)
+
         description += "\n\nPuppyJusticeAutomated is available on github here: {}\n\n".format(
             "https://github.com/ALSchwalm/scotus-dogs-automated")
 
@@ -121,4 +127,4 @@ if __name__ == "__main__":
         )
 
         build_video_and_upload_case(title, description, media_json, resources)
-        handled_cases.write(str(case["ID"]) + "\n")
+        cases_file.write(str(case["ID"]) + "\n")
