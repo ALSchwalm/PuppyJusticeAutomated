@@ -23,8 +23,8 @@ def build_video_and_upload_case(title, description, media_json, resources):
     logging.info("  Building video")
     video = builder.build_video(resources, transcript, audio)
 
-    logging.info("  Writing video to {}.mp4".format(title))
-    video.write_videofile("{}.mp4".format(title))
+    logging.info("  Writing video to build/{}.mp4".format(title))
+    video.write_videofile("build/{}.mp4".format(title))
 
     logging.info("  Uploading video")
     uploader.upload_video(title,

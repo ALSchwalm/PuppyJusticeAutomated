@@ -237,5 +237,5 @@ def build_video(resources, transcript, audio):
 
 def build_subtitles(transcript):
     title = transcript["title"]
-    write_subtitle_file(transcript, "{}.txt".format(title))
-    return "{}.txt".format(title)
+    write_subtitle_file(transcript, "build/{}.txt".format(title))
+    return "build/{}.txt".format(title)
