@@ -123,11 +123,11 @@ if __name__ == "__main__":
             logging.info("Skipping case {}".format(case["ID"]))
             continue
 
-        description = "Question:\n"
-        description += sanitize_text(case["question"])
-
-        description += "Facts:\n"
+        description = "Facts:\n"
         description += sanitize_text(case["facts_of_the_case"])
+
+        description += "Question:\n"
+        description += sanitize_text(case["question"])
 
         if case["conclusion"]:
             description += "Conclusion:\n"
