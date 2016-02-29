@@ -28,7 +28,7 @@ def build_video_and_upload_case(title, description, media_json, resources):
 
     logging.info("  Uploading video")
     uploader.upload_video(title,
-                          "{}.mp4".format(title),
+                          "build/{}.mp4".format(title),
                           subtitle_location,
                           ["puppyjustice", "scotus", "yt:cc=on",
                            "RealAnimalsFakePaws"],
