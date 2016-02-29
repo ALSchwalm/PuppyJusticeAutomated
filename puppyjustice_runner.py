@@ -36,6 +36,22 @@ def build_video_and_upload_case(title, description, media_json, resources):
     logging.info("  Uploading complete")
 
 
+def was_argued(case):
+    for event in case["timeline"]:
+        if event["event"] == "Argued":
+            return True
+    return False
+
+
+def date_argued(case):
+    for event in case["timeline"]:
+        if event["event"] == "Argued":
+            # TODO I'm not sure what the other dates can be, so just
+            # go with the first one
+            return event["dates"][0]
+    raise ValueError("Request for date of a case that was not argued")
+
+
 def cases_during_year(year, excluding):
     url = ("https://api.oyez.org/cases?filter=term:{}".format(year) +
            "&labels=true&page=0&per_page=0")
@@ -43,7 +59,11 @@ def cases_during_year(year, excluding):
     logging.info("Downloading cases from: {}".format(url))
 
     json = downloader.download_json(url)
-    for short_case in json:
+
+    cases = [case for case in json if was_argued(case)]
+    cases.sort(key=lambda x: date_argued(x))
+
+    for short_case in cases:
         id = short_case["ID"]
 
         if id in excluding:
