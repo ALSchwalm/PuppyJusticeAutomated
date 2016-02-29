@@ -64,7 +64,7 @@ def write_subtitle_file(transcript, destination):
                     end_time = float(block["stop"]) * 1000
                     block_text = block["text"]
 
-                    if block_num == 0:
+                    if turn["speaker"] and block_num == 0:
                         sub_name = turn["speaker"]["last_name"].split()[-1]
                         block_text = sub_name + ": " + block_text
 
@@ -165,7 +165,10 @@ def same_speaker(turn, speaker):
 
 
 def turn_speaker(turn):
-    return turn["speaker"]["name"]
+    if turn["speaker"]:
+        return turn["speaker"]["name"]
+    else:
+        return None
 
 
 def build_video(resources, transcript, audio):
@@ -180,6 +183,11 @@ def build_video(resources, transcript, audio):
         while turn_num < len(turns):
             turn = turns[turn_num]
             name = turn_speaker(turn)
+
+            if name is None:
+                remainder += turn_duration(turn)
+                turn_num += 1
+                continue
 
             if name not in JUSTICE_MAPPING:
                 assert(turn["speaker"]["roles"] is None)
