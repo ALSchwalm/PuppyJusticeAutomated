@@ -76,7 +76,7 @@ if __name__ == "__main__":
     arguments = docopt(__doc__, version='scotus-dogs-automated v0.1')
 
     # Enable Logging
-    logging.basicConfig(filename='scotus-dogs-automated.log',
+    logging.basicConfig(filename='puppyjusticeautomated.log',
                         level=logging.DEBUG)
 
     seed = random.random()
@@ -85,8 +85,9 @@ if __name__ == "__main__":
     # For reproducible random choices
     random.seed(seed)
 
-    with open("handled_cases.txt", "w+") as cases_file:
+    with open("handled_cases.txt", "r+") as cases_file:
         handled_cases = [int(id) for id in cases_file.readlines()]
+    cases_file = open("handled_cases.txt", "a")
 
     resources = builder.generate_resource_mapping("resources")
 
