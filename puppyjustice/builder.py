@@ -21,9 +21,14 @@ MAX_RELATED_TIME = 7
 MIN_CLIP_DURATION = 1.8
 RECENT_SPEAKER_THRESHOLD = 6
 MAX_CHARACTERS_PER_SUBTITLE = 85
+INTRO_DURATION = 6
+CROSSFADE_DURATION = 1
 
 
 def milli_to_timecode(ms, short=False):
+    # Timecode must take into account the intro, but minus the crossfade
+    ms += (INTRO_DURATION - CROSSFADE_DURATION) * 1000
+
     milli = int(ms % 1000)
     seconds = int((ms / 1000) % 60)
     minutes = int((ms / (1000*60)) % 60)
@@ -176,7 +181,34 @@ def turn_speaker(turn):
         return None
 
 
-def build_video(resources, transcript, audio):
+def generate_intro(title, question):
+    assert(title.count(" v. ") == 1)
+    title = title.replace(" v. ", "\nv.\n")
+    question = "\n\nQuestion: " + question
+
+    text_settings = {
+        "color": 'white',
+        "stroke_color": "black",
+        "stroke_width": 2,
+        "method": "caption",
+        "size": (900, None),
+        "font": 'Bookman-URW-Demi-Bold',
+    }
+
+    title_txt = TextClip(title, fontsize=65, **text_settings)
+    background = ImageClip('resources/intro_background.png')
+
+    intro = CompositeVideoClip([
+        background,
+        title_txt.set_pos(('center', 'center')),
+    ], size=(1280, 720))
+
+    intro.end = INTRO_DURATION
+    intro.duration = INTRO_DURATION
+    return intro
+
+
+def build_video(title, question, resources, transcript, audio):
     sections = transcript["sections"]
 
     current_remainder = 0
@@ -234,9 +266,20 @@ def build_video(resources, transcript, audio):
             speaker_videos.append(vid)
             turn_num += 1
 
+    intro = generate_intro(title, question)
+    first, *speaker_videos = speaker_videos
+
+    intro_and_first = CompositeVideoClip([
+        intro,
+        first.set_start(intro.end-CROSSFADE_DURATION).crossfadein(
+            CROSSFADE_DURATION)])
+    intro_and_first.duration = intro.duration + first.duration - CROSSFADE_DURATION
+
     ending = VideoFileClip("resources/disclaimer.mp4")
-    out = concatenate_videoclips(speaker_videos + [ending.crossfadein(1)])
+    out = concatenate([intro_and_first] + speaker_videos + [ending],
+                      method="compose")
     out.audio = audio.audio
+    out.audio.start = intro.duration - CROSSFADE_DURATION
     return out
 
 

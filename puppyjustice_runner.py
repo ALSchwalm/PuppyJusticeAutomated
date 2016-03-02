@@ -12,7 +12,8 @@ from docopt import docopt
 from puppyjustice import downloader, builder, uploader
 
 
-def build_video_and_upload_case(title, description, media_json, resources):
+def build_video_and_upload_case(title, sub_title, question, description,
+                                media_json, resources):
     logging.info("  Downloading audio".format(title))
     audio = downloader.download_audio(media_json)
     transcript = media_json["transcript"]
@@ -21,13 +22,13 @@ def build_video_and_upload_case(title, description, media_json, resources):
     subtitle_location = builder.build_subtitles(transcript)
 
     logging.info("  Building video")
-    video = builder.build_video(resources, transcript, audio)
+    video = builder.build_video(title, question, resources, transcript, audio)
 
     logging.info("  Writing video to build/{}.mp4".format(title))
     video.write_videofile("build/{}.mp4".format(title))
 
     logging.info("  Uploading video")
-    uploader.upload_video(title,
+    uploader.upload_video("{}: {}".format(title, sub_title),
                           "build/{}.mp4".format(title),
                           subtitle_location,
                           ["puppyjustice", "scotus", "yt:cc=on",
@@ -74,9 +75,9 @@ def cases_during_year(year, excluding):
         media_json = downloader.download_json(
             case_json["oral_argument_audio"][0]["href"])
         oyez_link = short_case["href"].replace("api.oyez.org", "www.oyez.org")
-        title = "{}: {}".format(short_case["name"],
-                                case_json["oral_argument_audio"][0]["title"])
-        yield case_json, title, media_json, oyez_link
+        title = short_case["name"]
+        sub_title = case_json["oral_argument_audio"][0]["title"]
+        yield case_json, title, sub_title, media_json, oyez_link
 
 
 def can_handle_case(case):
@@ -117,7 +118,7 @@ if __name__ == "__main__":
 
     resources = builder.generate_resource_mapping("resources")
 
-    for case, title, media_json, oyez_link in cases_during_year(
+    for case, title, sub_title, media_json, oyez_link in cases_during_year(
             2010, excluding=handled_cases):
         if not can_handle_case(case):
             logging.info("Skipping case {}".format(case["ID"]))
@@ -127,7 +128,8 @@ if __name__ == "__main__":
         description += sanitize_text(case["facts_of_the_case"])
 
         description += "Question:\n"
-        description += sanitize_text(case["question"])
+        question = sanitize_text(case["question"])
+        description += question
 
         if case["conclusion"]:
             description += "Conclusion:\n"
@@ -140,7 +142,7 @@ if __name__ == "__main__":
             start_time = float(section["start"]) * 1000
             time = builder.milli_to_timecode(start_time, short=True)
 
-            description += "Section {}: {}\n".format(i, time)
+            description += "Section {}: {}\n".format(i+1, time)
 
         description += "\n\nPuppyJusticeAutomated is available on github here: {}\n\n".format(
             "https://github.com/ALSchwalm/scotus-dogs-automated")
@@ -152,5 +154,6 @@ if __name__ == "__main__":
             "See this link for details: https://creativecommons.org/licenses/by-nc/4.0/"
         )
 
-        build_video_and_upload_case(title, description, media_json, resources)
+        build_video_and_upload_case(title, sub_title, question, description,
+                                    media_json, resources)
         cases_file.write(str(case["ID"]) + "\n")
