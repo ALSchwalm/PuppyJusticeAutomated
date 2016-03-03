@@ -23,6 +23,7 @@ RECENT_SPEAKER_THRESHOLD = 6
 MAX_CHARACTERS_PER_SUBTITLE = 85
 INTRO_DURATION = 6
 CROSSFADE_DURATION = 1
+MIN_SPEAKER_INTRO_DURATION = 3
 
 
 def milli_to_timecode(ms, short=False):
@@ -96,18 +97,80 @@ def random_clip(video, duration):
     return video.subclip(start, start+duration)
 
 
-def generate_video_for_speaker(speaker, duration, resources, no_skip=False):
-    speaker_resources = resources[speaker]
+def get_speaker_info_by_id(case, speaker_id):
+    for advocate in case["advocates"]:
+        if advocate["advocate"]["ID"] == speaker_id:
+            return (advocate["advocate"]["name"],
+                    advocate["advocate_description"])
+
+    for court in case["heard_by"]:
+        for justice in court["members"]:
+            if justice["ID"] == speaker_id:
+                return (justice["name"],
+                        justice["roles"][0]["role_title"])
+    assert(False)
+
+
+def generate_speaker_intro(speaker_id, case, video):
+    name, description = get_speaker_info_by_id(case, speaker_id)
+
+    intro_settings = {
+        "color": 'white',
+        "method": "label",
+    }
+
+    intro_text = TextClip(name, fontsize=40,
+                          font="Bookman-URW-Demi-Bold",
+                          stroke_color="black",
+                          stroke_width=2,
+                          **intro_settings)
+
+    subtitle_text = TextClip(description, fontsize=20,
+                             font="Bookman-URW-Light-Italic",
+                             **intro_settings)
+    background = ImageClip('resources/speaker_background.png')
+
+    intro_text = intro_text.set_pos((80, 550))
+    subtitle_text = subtitle_text.set_pos((80, 600))
+    background = background.set_pos((60, 540))
+
+    intro = CompositeVideoClip([
+        video,
+        background,
+        intro_text,
+        subtitle_text
+    ], size=(1280, 720))
+    intro = intro.set_duration(video.duration)
+    return intro
+
+
+def generate_video_for_speaker(resource_id, duration, resources,
+                               no_skip=False, introduction=False,
+                               case=None, speaker_id=None):
     misc_resources = resources["misc"]
+    speaker_resources = resources[resource_id]
+
+    if duration < 0:
+        return None, duration
 
     clips = []
     while duration > MIN_CLIP_DURATION or no_skip:
         no_skip = False
 
-        c = choice(speaker_resources)
+        # We have not yet created an introduction
+        if introduction is True and len(clips) == 0:
+            video = speaker_resources[0]  # just take the longest one
+            c = generate_speaker_intro(speaker_id, case, video)
+        else:
+            c = choice(speaker_resources)
+
         if c.duration > duration:
-            clips.append(random_clip(c, duration))
-            duration = 0
+            if introduction is True and duration < MIN_SPEAKER_INTRO_DURATION:
+                clips.append(random_clip(c, MIN_SPEAKER_INTRO_DURATION))
+                duration -= MIN_CLIP_DURATION
+            else:
+                clips.append(random_clip(c, duration))
+                duration = 0
         else:
             clips.append(c)
             duration -= c.duration
@@ -130,7 +193,7 @@ def generate_video_for_speaker(speaker, duration, resources, no_skip=False):
                     clips.append(m)
                     duration -= m.duration
     if len(clips) > 0:
-        out = concatenate_videoclips(clips)
+        out = concatenate(clips)
         return out, duration
     else:
         return None, None
@@ -181,12 +244,11 @@ def turn_speaker(turn):
         return None
 
 
-def generate_intro(title, question):
+def generate_intro(title):
     assert(title.count(" v. ") == 1)
     title = title.replace(" v. ", "\nv.\n")
-    question = "\n\nQuestion: " + question
 
-    text_settings = {
+    title_settings = {
         "color": 'white',
         "stroke_color": "black",
         "stroke_width": 2,
@@ -195,7 +257,7 @@ def generate_intro(title, question):
         "font": 'Bookman-URW-Demi-Bold',
     }
 
-    title_txt = TextClip(title, fontsize=65, **text_settings)
+    title_txt = TextClip(title, fontsize=65, **title_settings)
     background = ImageClip('resources/intro_background.png')
 
     intro = CompositeVideoClip([
@@ -208,11 +270,12 @@ def generate_intro(title, question):
     return intro
 
 
-def build_video(title, question, resources, transcript, audio):
+def build_video(title, case, resources, transcript, audio):
     sections = transcript["sections"]
 
     current_remainder = 0
     unknown_mapping = {}
+    has_been_introduced = []
     speaker_videos = []
     for section in sections:
         turns = section["turns"]
@@ -237,6 +300,7 @@ def build_video(title, question, resources, transcript, audio):
             else:
                 resource = JUSTICE_MAPPING[name]
 
+            speaker_id = turn["speaker"]["ID"]
             duration = turn_duration(turn)
 
             # Just skip very short turns
@@ -253,10 +317,22 @@ def build_video(title, question, resources, transcript, audio):
                 duration += turn_duration(turns[turn_num+2])
                 turn_num += 2
 
-            vid, remainder = generate_video_for_speaker(resource,
-                                                        duration + current_remainder,
-                                                        resources, no_skip=True)
-            if vid is None:
+            if duration > 2 and speaker_id not in has_been_introduced:
+                vid, remainder = generate_video_for_speaker(resource,
+                                                            duration + current_remainder,
+                                                            resources,
+                                                            no_skip=True,
+                                                            introduction=True,
+                                                            case=case,
+                                                            speaker_id=speaker_id)
+                has_been_introduced.append(speaker_id)
+            else:
+                vid, remainder = generate_video_for_speaker(resource,
+                                                            duration + current_remainder,
+                                                            resources,
+                                                            no_skip=True)
+
+            if vid is None and remainder is None:
                 current_remainder = duration
                 turn_num += 1
                 continue
@@ -266,14 +342,15 @@ def build_video(title, question, resources, transcript, audio):
             speaker_videos.append(vid)
             turn_num += 1
 
-    intro = generate_intro(title, question)
+    intro = generate_intro(title)
     first, *speaker_videos = speaker_videos
 
     intro_and_first = CompositeVideoClip([
         intro,
         first.set_start(intro.end-CROSSFADE_DURATION).crossfadein(
             CROSSFADE_DURATION)])
-    intro_and_first.duration = intro.duration + first.duration - CROSSFADE_DURATION
+    intro_and_first = intro_and_first.set_duration(
+        intro.duration + first.duration - CROSSFADE_DURATION)
 
     ending = VideoFileClip("resources/disclaimer.mp4")
     out = concatenate([intro_and_first] + speaker_videos + [ending],

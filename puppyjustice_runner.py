@@ -12,7 +12,7 @@ from docopt import docopt
 from puppyjustice import downloader, builder, uploader
 
 
-def build_video_and_upload_case(title, sub_title, question, description,
+def build_video_and_upload_case(title, sub_title, case, description,
                                 media_json, resources):
     logging.info("  Downloading audio".format(title))
     audio = downloader.download_audio(media_json)
@@ -22,7 +22,7 @@ def build_video_and_upload_case(title, sub_title, question, description,
     subtitle_location = builder.build_subtitles(transcript)
 
     logging.info("  Building video")
-    video = builder.build_video(title, question, resources, transcript, audio)
+    video = builder.build_video(title, case, resources, transcript, audio)
 
     logging.info("  Writing video to build/{}.mp4".format(title))
     video.write_videofile("build/{}.mp4".format(title))
@@ -154,6 +154,6 @@ if __name__ == "__main__":
             "See this link for details: https://creativecommons.org/licenses/by-nc/4.0/"
         )
 
-        build_video_and_upload_case(title, sub_title, question, description,
+        build_video_and_upload_case(title, sub_title, case, description,
                                     media_json, resources)
         cases_file.write(str(case["ID"]) + "\n")
