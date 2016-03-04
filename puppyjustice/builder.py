@@ -342,15 +342,15 @@ def build_video(title, case, resources, transcript, audio):
             assert(math.isclose(vid.duration + remainder,
                                 duration + current_remainder))
 
-            # TODO handle case where no vid because remainder is negative
             if vid is None and remainder is None:
                 current_remainder = duration
                 turn_num += 1
                 continue
+            elif vid is None:
+                current_remainder = remainder
             else:
                 current_remainder = remainder
-
-            speaker_videos.append(vid)
+                speaker_videos.append(vid)
             turn_num += 1
 
     intro = generate_intro(title)
