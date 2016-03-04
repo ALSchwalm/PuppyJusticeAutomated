@@ -144,8 +144,9 @@ if __name__ == "__main__":
 
             description += "Section {}: {}\n".format(i+1, time)
 
-        description += "\n\nPuppyJusticeAutomated is available on github here: {}\n\n".format(
-            "https://github.com/ALSchwalm/scotus-dogs-automated")
+        description += ("\n\nPuppyJusticeAutomated videos are created by a program "
+                        "written by Adam Schwalm. This program is available on "
+                        "github here: https://github.com/ALSchwalm/PuppyJusticeAutomated\n\n")
 
         description += (
             "The audio and transcript used in this video is provided "
