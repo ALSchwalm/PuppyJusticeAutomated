@@ -7,6 +7,8 @@ puppyjustice.py --version
 import logging
 import random
 import re
+import os
+import glob
 from docopt import docopt
 
 from puppyjustice import downloader, builder, uploader
@@ -158,3 +160,6 @@ if __name__ == "__main__":
         build_video_and_upload_case(title, sub_title, case, description,
                                     media_json, resources)
         cases_file.write(str(case["ID"]) + "\n")
+
+        for f in glob.glob('build/*'):
+            os.remove(f)
