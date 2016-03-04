@@ -29,13 +29,16 @@ def build_video_and_upload_case(title, sub_title, case, description,
     logging.info("  Writing video to build/{}.mp4".format(title))
     video.write_videofile("build/{}.mp4".format(title))
 
+    thumbnail = builder.write_random_frame(video, "build/")
+
     logging.info("  Uploading video")
     uploader.upload_video("{}: {}".format(title, sub_title),
                           "build/{}.mp4".format(title),
                           subtitle_location,
                           ["puppyjustice", "scotus", "yt:cc=on",
                            "RealAnimalsFakePaws"],
-                          description)
+                          description,
+                          thumbnail)
     logging.info("  Uploading complete")
 
 

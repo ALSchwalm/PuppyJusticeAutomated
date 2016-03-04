@@ -139,6 +139,11 @@ def initialize_upload(youtube, options):
         media_body=options.caption
     ).execute()
 
+    youtube.thumbnails().set(
+        videoId=id,
+        media_body=options.thumbnail
+    ).execute()
+
 
 # This method implements an exponential backoff strategy to resume a
 # failed upload.
@@ -179,6 +184,7 @@ def resumable_upload(insert_request):
 argparser.add_argument("--file", required=True, help="Video file to upload")
 argparser.add_argument("--caption", help="Captions for video")
 argparser.add_argument("--title", help="Video title", default="Test Title")
+argparser.add_argument("--thumbnail", help="Add a thumbnail")
 argparser.add_argument("--description", help="Video description",
                        default="Test Description")
 argparser.add_argument("--category", default="24",
@@ -191,7 +197,7 @@ argparser.add_argument("--privacyStatus", choices=VALID_PRIVACY_STATUSES,
 
 
 def upload_video(title, video_path, caption_path, keywords,
-                 description, public=False):
+                 description, thumbnail, public=False):
     if public:
         priv_status = "public"
     else:
@@ -203,6 +209,7 @@ def upload_video(title, video_path, caption_path, keywords,
         "--title", title,
         "--description", description,
         "--keywords", ",".join(keywords),
+        "--thumbnail", thumbnail,
         "--privacyStatus", priv_status
     ])
 

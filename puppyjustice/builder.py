@@ -249,6 +249,12 @@ def turn_speaker(turn):
         return None
 
 
+def write_random_frame(vid, path):
+    v = random_clip(vid, 1)
+    return v.write_images_sequence(
+        os.path.join(path, "thumbnail%d.png"), fps=1)[0]
+
+
 def generate_intro(title):
     assert(title.count(" v. ") == 1)
     title = title.replace(" v. ", "\nv.\n")
