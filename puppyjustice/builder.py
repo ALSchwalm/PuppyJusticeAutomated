@@ -1,4 +1,5 @@
 import os
+import math
 from moviepy.editor import *
 from random import choice, uniform
 
@@ -94,7 +95,9 @@ def write_subtitle_file(transcript, destination):
 def random_clip(video, duration):
     assert(duration < video.duration)
     start = uniform(0, video.duration - duration)
-    return video.subclip(start, start+duration)
+    clip = video.subclip(start, start+duration)
+    assert(math.isclose(clip.duration, duration))
+    return clip
 
 
 def get_speaker_info_by_id(case, speaker_id):
@@ -147,6 +150,7 @@ def generate_speaker_intro(speaker_id, case, video):
 def generate_video_for_speaker(resource_id, duration, resources,
                                no_skip=False, introduction=False,
                                case=None, speaker_id=None):
+    orig_duration = duration
     misc_resources = resources["misc"]
     speaker_resources = resources[resource_id]
 
@@ -167,7 +171,7 @@ def generate_video_for_speaker(resource_id, duration, resources,
         if c.duration > duration:
             if introduction is True and duration < MIN_SPEAKER_INTRO_DURATION:
                 clips.append(random_clip(c, MIN_SPEAKER_INTRO_DURATION))
-                duration -= MIN_CLIP_DURATION
+                duration -= MIN_SPEAKER_INTRO_DURATION
             else:
                 clips.append(random_clip(c, duration))
                 duration = 0
@@ -194,6 +198,7 @@ def generate_video_for_speaker(resource_id, duration, resources,
                     duration -= m.duration
     if len(clips) > 0:
         out = concatenate(clips)
+        assert(math.isclose(out.duration + duration, orig_duration))
         return out, duration
     else:
         return None, None
@@ -332,6 +337,12 @@ def build_video(title, case, resources, transcript, audio):
                                                             resources,
                                                             no_skip=True)
 
+            # The duration we got plus the remainder should be equal
+            # to the duration we requested
+            assert(math.isclose(vid.duration + remainder,
+                                duration + current_remainder))
+
+            # TODO handle case where no vid because remainder is negative
             if vid is None and remainder is None:
                 current_remainder = duration
                 turn_num += 1
