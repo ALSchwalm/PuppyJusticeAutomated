@@ -60,7 +60,7 @@ def date_argued(case):
     raise ValueError("Request for date of a case that was not argued")
 
 
-def recent_cases(start_year=2009, end_year=2017, excluding=None):
+def recent_cases(start_year=2010, end_year=2017, excluding=None):
     urls = []
     for year in range(start_year, end_year):
         url = ("https://api.oyez.org/cases?filter=term:{}".format(year) +
@@ -131,6 +131,7 @@ if __name__ == "__main__":
     for case, title, sub_title, media_json, oyez_link in recent_cases(
             excluding=handled_cases):
         if not can_handle_case(case):
+            cases_file.write(str(case["ID"]) + "\n")
             logging.info("Skipping case {}".format(case["ID"]))
             continue
 
