@@ -29,7 +29,9 @@ def build_video_and_upload_case(title, sub_title, case, description,
     logging.info("  Writing video to build/{}.mp4".format(title))
     video.write_videofile("build/{}.mp4".format(title))
 
-    thumbnail = builder.write_random_frame(video, "build/")
+    builder.write_random_frame("build/{}.mp4".format(title),
+                               5, video.duration - 15,
+                               "build/thumbnail.png")
 
     logging.info("  Uploading video")
     uploader.upload_video("{}: {}".format(title, sub_title),
@@ -38,7 +40,7 @@ def build_video_and_upload_case(title, sub_title, case, description,
                           ["puppyjustice", "scotus", "yt:cc=on",
                            "RealAnimalsFakePaws"],
                           description,
-                          thumbnail)
+                          "build/thumbnail.png")
     logging.info("  Uploading complete")
 
 
@@ -58,13 +60,16 @@ def date_argued(case):
     raise ValueError("Request for date of a case that was not argued")
 
 
-def cases_during_year(year, excluding):
-    url = ("https://api.oyez.org/cases?filter=term:{}".format(year) +
-           "&labels=true&page=0&per_page=0")
+def recent_cases(start_year=2009, end_year=2017, excluding=None):
+    urls = []
+    for year in range(start_year, end_year):
+        url = ("https://api.oyez.org/cases?filter=term:{}".format(year) +
+               "&labels=true&page=0&per_page=0")
+        urls.append(url)
 
-    logging.info("Downloading cases from: {}".format(url))
-
-    json = downloader.download_json(url)
+    json = []
+    for url in urls:
+        json += downloader.download_json(url)
 
     cases = [case for case in json if was_argued(case)]
     cases.sort(key=lambda x: date_argued(x))
@@ -123,8 +128,8 @@ if __name__ == "__main__":
 
     resources = builder.generate_resource_mapping("resources")
 
-    for case, title, sub_title, media_json, oyez_link in cases_during_year(
-            2010, excluding=handled_cases):
+    for case, title, sub_title, media_json, oyez_link in recent_cases(
+            excluding=handled_cases):
         if not can_handle_case(case):
             logging.info("Skipping case {}".format(case["ID"]))
             continue

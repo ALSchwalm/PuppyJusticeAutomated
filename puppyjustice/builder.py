@@ -1,5 +1,6 @@
 import os
 import math
+import subprocess
 from moviepy.editor import *
 from random import choice, uniform
 
@@ -249,10 +250,14 @@ def turn_speaker(turn):
         return None
 
 
-def write_random_frame(vid, path):
-    v = random_clip(vid, 1)
-    return v.write_images_sequence(
-        os.path.join(path, "thumbnail%d.png"), fps=1)[0]
+def write_random_frame(vid_path, start, end, path):
+    time = uniform(start, end)
+    subprocess.call(["ffmpeg",
+                     "-y",
+                     "-ss", str(time),
+                     "-i", vid_path,
+                     "-vframes", "1",
+                     path])
 
 
 def generate_intro(title):
