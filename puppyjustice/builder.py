@@ -69,7 +69,7 @@ def block_parts(text, start, end):
 
 def write_subtitle_file(transcript, destination):
     sections = transcript["sections"]
-    with open(destination, "w") as file:
+    with open(destination, "w", encoding='utf-8') as file:
         for section in sections:
             for turn in section["turns"]:
                 for block_num, block in enumerate(turn["text_blocks"]):
@@ -129,21 +129,23 @@ def generate_speaker_intro(speaker_id, case, video):
                           stroke_width=2,
                           **intro_settings)
 
-    subtitle_text = TextClip(description, fontsize=20,
-                             font="Bookman-URW-Light-Italic",
-                             **intro_settings)
     background = ImageClip('resources/speaker_background.png')
 
     intro_text = intro_text.set_pos((80, 550))
-    subtitle_text = subtitle_text.set_pos((80, 600))
     background = background.set_pos((60, 540))
 
-    intro = CompositeVideoClip([
-        video,
-        background,
-        intro_text,
-        subtitle_text
-    ], size=(1280, 720))
+    layers = [video,
+              background,
+              intro_text]
+
+    if description:
+        subtitle_text = TextClip(description, fontsize=20,
+                                 font="Bookman-URW-Light-Italic",
+                                 **intro_settings)
+        subtitle_text = subtitle_text.set_pos((80, 600))
+        layers.append(subtitle_text)
+
+    intro = CompositeVideoClip(layers, size=(1280, 720))
     intro = intro.set_duration(video.duration)
     return intro
 
