@@ -103,6 +103,8 @@ def random_clip(video, duration):
 
 def get_speaker_info_by_id(case, speaker_id):
     for advocate in case["advocates"]:
+        if advocate["advocate"] is None:
+            continue
         if advocate["advocate"]["ID"] == speaker_id:
             return (advocate["advocate"]["name"],
                     advocate["advocate_description"])
