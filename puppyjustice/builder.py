@@ -386,7 +386,7 @@ def build_video(title, case, resources, transcript, audio):
     return out
 
 
-def build_subtitles(transcript):
-    title = transcript["title"]
+def build_subtitles(transcript, id):
+    title = id
     write_subtitle_file(transcript, "build/{}.txt".format(title))
     return "build/{}.txt".format(title)

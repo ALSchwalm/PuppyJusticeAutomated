@@ -18,24 +18,25 @@ def build_video_and_upload_case(title, sub_title, case, description,
                                 media_json, resources):
     logging.info("  Downloading audio".format(title))
     audio = downloader.download_audio(media_json)
+    id = media_json["id"]
     transcript = media_json["transcript"]
 
     logging.info("  Building subtitles")
-    subtitle_location = builder.build_subtitles(transcript)
+    subtitle_location = builder.build_subtitles(transcript, id)
 
     logging.info("  Building video")
     video = builder.build_video(title, case, resources, transcript, audio)
 
-    logging.info("  Writing video to build/{}.mp4".format(title))
-    video.write_videofile("build/{}.mp4".format(title))
+    logging.info("  Writing video to build/{}.mp4".format(id))
+    video.write_videofile("build/{}.mp4".format(id))
 
-    builder.write_random_frame("build/{}.mp4".format(title),
+    builder.write_random_frame("build/{}.mp4".format(id),
                                5, video.duration - 15,
                                "build/thumbnail.png")
 
     logging.info("  Uploading video")
     uploader.upload_video("{}: {}".format(title, sub_title),
-                          "build/{}.mp4".format(title),
+                          "build/{}.mp4".format(id),
                           subtitle_location,
                           ["puppyjustice", "scotus", "yt:cc=on",
                            "RealAnimalsFakePaws"],
