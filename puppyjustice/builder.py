@@ -114,11 +114,14 @@ def get_speaker_info_by_id(case, speaker_id):
             if justice["ID"] == speaker_id:
                 return (justice["name"],
                         justice["roles"][0]["role_title"])
-    assert(False)
+    return None
 
 
 def generate_speaker_intro(speaker_id, case, video):
-    name, description = get_speaker_info_by_id(case, speaker_id)
+    info = get_speaker_info_by_id(case, speaker_id)
+    if info is None:
+        return video
+    name, description = info
 
     intro_settings = {
         "color": 'white',
