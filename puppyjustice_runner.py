@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     for case, title, sub_title, media_json, oyez_link in recent_cases(
             excluding=handled_cases):
-        if not can_handle_case(case):
+        if not can_handle_case(case) or media_json["transcript"] is None:
             cases_file.write(str(case["ID"]) + "\n")
             logging.info("Skipping case {}".format(case["ID"]))
             continue

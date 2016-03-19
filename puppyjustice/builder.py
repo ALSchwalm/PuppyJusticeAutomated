@@ -102,12 +102,17 @@ def random_clip(video, duration):
 
 
 def get_speaker_info_by_id(case, speaker_id):
+    if case["advocates"] is None:
+        return None
     for advocate in case["advocates"]:
         if advocate["advocate"] is None:
             continue
         if advocate["advocate"]["ID"] == speaker_id:
             return (advocate["advocate"]["name"],
                     advocate["advocate_description"])
+
+    if case["heard_by"] is None:
+        return None
 
     for court in case["heard_by"]:
         for justice in court["members"]:
@@ -268,8 +273,12 @@ def write_random_frame(vid_path, start, end, path):
 
 
 def generate_intro(title):
-    assert(title.count(" v. ") == 1)
-    title = title.replace(" v. ", "\nv.\n")
+    if title.count(" v. ") == 1:
+        title = title.replace(" v. ", "\nv.\n")
+    elif title.count (" v ") == 1:
+        title = title.replace(" v ", "\nv\n")
+    else:
+        assert(False)
 
     title_settings = {
         "color": 'white',
@@ -357,7 +366,8 @@ def build_video(title, case, resources, transcript, audio):
 
             # The duration we got plus the remainder should be equal
             # to the duration we requested
-            assert(math.isclose(vid.duration + remainder,
+            vid_duration = 0 if vid is None else vid.duration
+            assert(math.isclose(vid_duration + remainder,
                                 duration + current_remainder))
 
             if vid is None and remainder is None:
