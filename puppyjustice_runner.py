@@ -18,6 +18,10 @@ def build_video_and_upload_case(title, sub_title, case, description,
                                 media_json, resources):
     logging.info("  Downloading audio".format(title))
     audio = downloader.download_audio(media_json)
+    if audio is None:
+      logging.warning("  Audio download failed. Skipping")
+      return
+
     id = media_json["id"]
     transcript = media_json["transcript"]
 
@@ -143,7 +147,7 @@ if __name__ == "__main__":
         question = sanitize_text(case["question"])
         description += question
 
-        if case["conclusion"]:
+        if case["conclusion"] and len(description) + len(case["conclusion"]) < 4000:
             description += "Conclusion:\n"
             description += sanitize_text(case["conclusion"])
 
@@ -166,6 +170,8 @@ if __name__ == "__main__":
             "Creative Commons Attribution-NonCommercial 4.0 International License. "
             "See this link for details: https://creativecommons.org/licenses/by-nc/4.0/"
         )
+
+        assert(len(description) < 5000)
 
         build_video_and_upload_case(title, sub_title, case, description,
                                     media_json, resources)
