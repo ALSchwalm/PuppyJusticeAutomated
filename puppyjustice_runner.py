@@ -1,7 +1,9 @@
-""" USAGE: puppyjustice.py
-
-puppyjustice.py -h | --help
-puppyjustice.py --version
+"""
+USAGE:
+  puppyjustice -h | --help
+  puppyjustice --version
+  puppyjustice
+  puppyjustice <case> <transcript>
 """
 
 import logging
@@ -9,6 +11,7 @@ import random
 import re
 import os
 import glob
+import json
 from docopt import docopt
 
 from puppyjustice import downloader, builder, uploader
@@ -87,12 +90,19 @@ def recent_cases(start_year=2010, end_year=2017, excluding=None):
         logging.info("Reading JSON for case {} ({})".format(id, short_case["name"]))
 
         case_json = downloader.download_json(short_case["href"])
-        media_json = downloader.download_json(
-            case_json["oral_argument_audio"][0]["href"])
-        oyez_link = short_case["href"].replace("api.oyez.org", "www.oyez.org")
-        title = short_case["name"]
-        sub_title = case_json["oral_argument_audio"][0]["title"]
-        yield case_json, title, sub_title, media_json, oyez_link
+        if case_json["oral_argument_audio"] is None:
+            continue
+
+        for i, part in enumerate(case_json["oral_argument_audio"]):
+            media_json = downloader.download_json(part["href"])
+            oyez_link = short_case["href"].replace("api.oyez.org", "www.oyez.org")
+            title = short_case["name"]
+            sub_title = part["title"]
+            if len(case_json["oral_argument_audio"]) > 1 and "part " not in sub_title.lower():
+                sub_title += " (Part {})".format(i+1)
+
+            finished = i == (len(case_json["oral_argument_audio"])-1)
+            yield case_json, title, sub_title, media_json, oyez_link, finished
 
 
 def can_handle_case(case):
@@ -133,7 +143,16 @@ if __name__ == "__main__":
 
     resources = builder.generate_resource_mapping("resources")
 
-    for case, title, sub_title, media_json, oyez_link in recent_cases(
+    if arguments["<case>"] and arguments["<transcript>"]:
+        case = json.load(open(arguments["<case>"]))
+        transcript = json.load(open(arguments["<transcript>"]))
+
+        build_video_and_upload_case("National Federation of Independent Businesses v. Sebelius: Oral Argument", "March 28, 2012 (Part 4)", case, "description",
+                                    transcript, resources)
+        exit(0)
+
+
+    for case, title, sub_title, media_json, oyez_link, finished in recent_cases(
             excluding=handled_cases):
         if not can_handle_case(case) or media_json["transcript"] is None:
             cases_file.write(str(case["ID"]) + "\n")
@@ -171,11 +190,14 @@ if __name__ == "__main__":
             "See this link for details: https://creativecommons.org/licenses/by-nc/4.0/"
         )
 
+        # Max youtube description length
         assert(len(description) < 5000)
 
         build_video_and_upload_case(title, sub_title, case, description,
                                     media_json, resources)
-        cases_file.write(str(case["ID"]) + "\n")
+
+        if finished:
+            cases_file.write(str(case["ID"]) + "\n")
 
         for f in glob.glob('build/*'):
             os.remove(f)

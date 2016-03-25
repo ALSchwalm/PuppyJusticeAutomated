@@ -26,6 +26,7 @@ MAX_CHARACTERS_PER_SUBTITLE = 85
 INTRO_DURATION = 6
 CROSSFADE_DURATION = 1
 MIN_SPEAKER_INTRO_DURATION = 3
+MAX_SPEAKER_TITLE = 65
 
 
 def milli_to_timecode(ms, short=False):
@@ -127,6 +128,9 @@ def generate_speaker_intro(speaker_id, case, video):
     if info is None:
         return video
     name, description = info
+
+    if len(description) > MAX_SPEAKER_TITLE:
+        description = None
 
     intro_settings = {
         "color": 'white',
