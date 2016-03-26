@@ -3,7 +3,7 @@ USAGE:
   puppyjustice -h | --help
   puppyjustice --version
   puppyjustice
-  puppyjustice <case> <transcript>
+  puppyjustice <title> <case> <transcript>
 """
 
 import logging
@@ -146,8 +146,9 @@ if __name__ == "__main__":
     if arguments["<case>"] and arguments["<transcript>"]:
         case = json.load(open(arguments["<case>"]))
         transcript = json.load(open(arguments["<transcript>"]))
+        title = arguments["<title>"]
 
-        build_video_and_upload_case("National Federation of Independent Businesses v. Sebelius: Oral Argument", "March 28, 2012 (Part 4)", case, "description",
+        build_video_and_upload_case(title, case, "description",
                                     transcript, resources)
         exit(0)
 
