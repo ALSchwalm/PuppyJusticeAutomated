@@ -11,5 +11,5 @@ so 'here there be dragons' applies.
 License
 =======
 
-If The code in this project is licensed under the terms of the GPLv3. See LICENSE.md
+The code in this project is licensed under the terms of the GPLv3. See LICENSE.md
  for details.
